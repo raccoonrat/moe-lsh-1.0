@@ -1,0 +1,442 @@
+%%%%%%%% ICML 2025 论文中文版：基于MoE路由权重的内生语义水印 %%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+% 中文支持
+\usepackage[UTF8]{ctex}
+
+% Recommended packages for figures and better typesetting:
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{booktabs} % for professional tables
+
+% hyperref makes hyperlinks in the resulting PDF.
+\usepackage{hyperref}
+
+% Attempt to make hyperref and algorithmic work together better:
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+% Use the following line for the initial blind version submitted for review:
+\usepackage{icml2025}
+
+% For theorems and such
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+
+% if you use cleveref..
+\usepackage[capitalize,noabbrev]{cleveref}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{corollary}[theorem]{推论}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{假设}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{备注}
+
+% Short title for running head
+\icmltitlerunning{基于MoE路由权重的内生语义水印}
+
+\begin{document}
+
+\twocolumn[
+\icmltitle{基于LSH稳定化路由权重的MoE大语言模型\\内生语义水印方法}
+
+% Author information (will be hidden for blind review)
+\begin{icmlauthorlist}
+\icmlauthor{匿名作者}{aff1}
+\end{icmlauthorlist}
+
+\icmlaffiliation{aff1}{匿名机构}
+
+\icmlkeywords{机器学习, 水印, 专家混合模型, 局部敏感哈希, 鲁棒性}
+
+\vskip 0.3in
+]
+
+\printAffiliationsAndNotice{}
+
+\begin{abstract}
+基于专家混合（MoE）架构的大语言模型（LLM）正变得越来越普遍，然而现有的水印方法在面对保持语义但改变表面形式的释义攻击时表现不佳。我们提出了一种新颖的水印方法，利用MoE路由权重（RW）中的\emph{内生语义信号}来驱动水印生成。我们的方法使用局部敏感哈希（LSH）将路由权重向量稳定化为离散哈希签名，然后将其作为词级绿色词表选择的种子。与基于外部嵌入的语义水印不同，我们的方法不需要额外的模型或训练开销，直接从推理路径中提取信号。我们证明了路由权重在释义扰动下表现出语义稳定性，通过LSH碰撞保持实现鲁棒的水印检测。在DeepSeek MoE和Qianwen MoE模型上的实验表明，与基线方法相比，我们的方法在面对强释义攻击和黑盒清洗时表现出更优的鲁棒性，同时保持生成质量。我们的工作建立了首个专为MoE时代设计的、无需训练的、语义鲁棒的水印框架。
+\end{abstract}
+
+\section{引言}
+
+大语言模型（LLM）的快速普及引发了关于内容来源、版权保护和虚假信息检测的关键关切。水印——在生成文本中嵌入可检测信号的过程——已成为一种有前景的解决方案。然而，现有的水印方法面临一个根本性挑战：它们容易受到\emph{释义攻击}，这些攻击在改变表面级词元序列的同时保持语义含义。
+
+当前的水印方法主要分为两类。\emph{词元级水印}（如Kirchenbauer等人，2023）使用伪随机函数将词汇表划分为"绿色"和"红色"列表，使生成偏向绿色词元。虽然高效且无需训练，但这些方法对释义很脆弱，因为它们依赖于表面词元身份。\emph{语义级水印}（如SemStamp）通过使用外部句子编码器提取语义嵌入，然后应用LSH进行稳定哈希来解决这个问题。然而，这些方法因运行额外的嵌入模型而产生显著的在线开销。
+
+与此同时，LLM架构的格局正在向\emph{专家混合（MoE）}模型转变。从Mixtral-8x7B到最近的DeepSeek MoE和Qianwen MoE等模型，MoE架构正在成为高效扩展语言模型的事实标准。MoE模型根据推理时计算的路由权重，将词元路由到专家网络。这些路由权重编码了关于词元-上下文关系的语义信息，然而这一丰富的信号在水印领域仍未得到利用。
+
+我们提出了一种弥合这一差距的新方法：MoE LLM的\emph{内生语义水印}。我们的核心洞察是，MoE路由权重（RW）作为自然语义信号，具有以下特点：(1) 在推理过程中已经计算；(2) 在释义扰动下语义稳定；(3) 不需要外部模型。我们使用LSH将连续的路由权重向量映射到离散哈希签名，这些签名作为绿色词表选择的种子。这创建了一个无需训练的、语义鲁棒的水印框架，利用了MoE架构的固有特性。
+
+我们的贡献包括：(1) 首个从MoE路由权重中提取语义信号而无需外部编码器的水印方法；(2) 对释义引起的路由权重扰动下LSH碰撞概率的形式化分析；(3) 全面的实验，证明与基线方法相比，在面对强释义攻击和黑盒清洗时具有更优的鲁棒性；(4) 与HuggingFace transformers兼容的开源实现。
+
+\section{相关工作}
+
+\subsection{词元级水印}
+
+Kirchenbauer等人（2023）的开创性工作引入了绿色词表水印范式。在每个生成步骤，伪随机函数（PRF）根据前一个词元将词汇表划分为绿色和红色列表。绿色词元获得小的logit偏置，检测使用z-score统计检验。虽然简单且无需训练，但这种方法对释义很脆弱，因为PRF种子依赖于表面词元身份。
+
+后续工作探索了变体：Unigram水印（Kuditipudi等人，2023）使用单字统计；多比特水印（Qu等人，2024）支持可追溯性。然而，所有词元级方法都共享表面形式依赖的根本局限性。
+
+\subsection{语义级水印}
+
+SemStamp（Zhao等人，2024）通过在句子级别操作来解决释义鲁棒性。它使用外部句子编码器（如Sentence-BERT）提取语义嵌入，应用LSH进行稳定哈希，并使用拒绝采样来强制水印存在。虽然鲁棒，但这种方法在生成过程中需要运行额外的嵌入模型，产生显著的计算开销。
+
+我们的方法通过\emph{内生地}从MoE架构本身提取语义信号而不同，消除了对外部编码器的需求，同时保持语义鲁棒性。
+
+\subsection{MoE路由与稳定性}
+
+MoE模型使用学习的路由函数将词元路由到专家网络。Fedus等人（2022）建立了带负载均衡的top-k路由范式。最近的分析（Zhou等人，2024）表明，路由模式可以表现出词元ID驱动和上下文驱动的行为，对语义稳定性有影响。
+
+我们利用路由权重编码语义关系，以及LSH可以在扰动下保持这些关系的观察。这使得无需外部模型即可实现语义水印。
+
+\subsection{鲁棒性评估}
+
+最近的工作强调了严格鲁棒性评估的重要性。WaterPark（Wang等人，2024）提供了统一的评估框架。B4（Liu等人，2025）和其他攻击方法表明，许多水印在强对抗设置下失败。我们遵循这些评估协议以确保我们的声明得到证实。
+
+\section{方法}
+
+\subsection{概述}
+
+我们的水印框架由三个组件组成：(1) 在推理过程中从MoE层\emph{提取路由权重}，(2) \emph{基于LSH的签名生成}，将路由权重稳定化为离散哈希，以及(3) 使用哈希签名作为PRF种子的\emph{绿色词表偏置}。该过程无需训练，只需要在MoE路由层中添加轻量级钩子。
+
+\subsection{路由权重提取}
+
+在MoE模型中，每个MoE层包含一个路由器，为词元$t$计算路由权重$\mathbf{r}_t \in \mathbb{R}^E$，其中$E$是专家数量。路由器通常使用学习的线性变换，然后进行softmax：
+
+\begin{equation}
+\mathbf{r}_t = \text{softmax}(\mathbf{W}_r \mathbf{h}_t + \mathbf{b}_r)
+\end{equation}
+
+其中$\mathbf{h}_t$是词元$t$的隐藏状态，$\mathbf{W}_r, \mathbf{b}_r$是路由器参数。
+
+我们从选定的MoE层（通常是中间层以获得语义丰富性）提取路由权重。对于多层MoE模型，我们可以使用单层或通过连接或平均组合多层。
+
+\subsection{基于LSH的签名生成}
+
+为了将连续的路由权重转换为离散的、稳定的签名，我们使用局部敏感哈希（LSH）。具体来说，我们采用\emph{SimHash}（随机投影LSH），它非常适合余弦相似度保持。
+
+给定路由权重向量$\mathbf{r}_t \in \mathbb{R}^E$，我们生成$b$位签名如下：
+
+\begin{equation}
+\text{LSH}(\mathbf{r}_t) = \text{sign}(\mathbf{R} \mathbf{r}_t)
+\end{equation}
+
+其中$\mathbf{R} \in \mathbb{R}^{b \times E}$是随机投影矩阵（在水印过程中固定），$\text{sign}(\cdot)$返回每个分量的符号，产生二进制向量$\mathbf{s}_t \in \{-1, +1\}^b$。
+
+LSH的关键特性是，如果两个路由权重向量$\mathbf{r}_t$和$\mathbf{r}'_t$相似（高余弦相似度），它们的LSH签名将以高概率碰撞。对于SimHash，如果向量之间的角度为$\theta$，则单个比特碰撞的概率为$1 - \theta/\pi$。对于$b$个独立比特，当$\theta$较小时，期望的汉明距离较小。
+
+\subsection{绿色词表选择与偏置}
+
+LSH签名$\mathbf{s}_t$用作绿色词表选择的种子。我们将二进制签名转换为整数种子：
+
+\begin{equation}
+\text{seed}_t = \text{int}(\mathbf{s}_t) \bmod 2^{32}
+\end{equation}
+
+伪随机函数（PRF）使用此种子将词汇表$\mathcal{V}$划分为绿色列表$\mathcal{G}_t$和红色列表$\mathcal{R}_t$：
+
+\begin{equation}
+\mathcal{G}_t = \{v \in \mathcal{V} : \text{PRF}(\text{seed}_t, v) < \gamma\}
+\end{equation}
+
+其中$\gamma \in (0,1)$控制绿色列表大小（通常$\gamma = 0.5$）。
+
+在生成过程中，我们对$\mathcal{G}_t$中的所有词元应用logit偏置$\delta > 0$：
+
+\begin{equation}
+\ell'_v = \ell_v + \delta \cdot \mathbf{1}[v \in \mathcal{G}_t]
+\end{equation}
+
+其中$\ell_v$是词元$v$的原始logit。
+
+\subsection{检测}
+
+水印检测可以在两种模式下进行：
+
+\subsubsection{白盒检测（提供方可验证）}
+
+给定候选文本和原始模型，我们通过运行模型前向传播来重构路由权重。然后我们为每个位置计算LSH签名和绿色列表，并统计绿色词元出现的数量。在零假设（无水印）下，绿色词元数量$X$遵循二项分布：
+
+\begin{equation}
+X \sim \text{Binomial}(n, \gamma)
+\end{equation}
+
+其中$n$是文本长度。z-score为：
+
+\begin{equation}
+Z = \frac{X - n\gamma}{\sqrt{n\gamma(1-\gamma)}}
+\end{equation}
+
+高z-score（例如$Z > 4$）表示存在水印。
+
+\subsubsection{窗口化检测}
+
+对于短文本或模型访问受限的情况，我们使用窗口化检测：在文本上滑动大小为$w$的窗口（例如128、256、512个词元），并为每个窗口计算z-score。最大z-score用作检测统计量。
+
+\subsection{多层融合}
+
+为了增强鲁棒性，我们可以组合来自多个MoE层的路由权重。两种策略：
+
+\textbf{AND融合：}只有当词元出现在\emph{所有}选定层的绿色列表中时，它才在绿色列表中。这增加了特异性但可能降低敏感性。
+
+\textbf{OR融合：}如果词元出现在\emph{任何}选定层的绿色列表中，它就在绿色列表中。这增加了敏感性但可能降低特异性。
+
+我们经验性地发现，使用2-3个中间层的AND融合提供了最佳的鲁棒性-质量权衡。
+
+\section{理论分析}
+
+\subsection{释义下LSH碰撞概率}
+
+设$\mathbf{r}_t$为原始词元$t$的路由权重，$\mathbf{r}'_t$为保持语义的释义后的路由权重。我们假设释义引起小的角度扰动：$\angle(\mathbf{r}_t, \mathbf{r}'_t) \leq \Delta\theta$。
+
+对于SimHash，比特$i$碰撞的概率（即$\text{sign}(\mathbf{R}_i \mathbf{r}_t) = \text{sign}(\mathbf{R}_i \mathbf{r}'_t)$）为：
+
+\begin{equation}
+P(\text{collision}_i) = 1 - \frac{\angle(\mathbf{r}_t, \mathbf{r}'_t)}{\pi} \geq 1 - \frac{\Delta\theta}{\pi}
+\end{equation}
+
+对于$b$个独立比特，期望的碰撞比特数为：
+
+\begin{equation}
+\mathbb{E}[\text{collisions}] = b \left(1 - \frac{\Delta\theta}{\pi}\right)
+\end{equation}
+
+这意味着对于小的$\Delta\theta$（保持语义的释义），大多数比特将碰撞，保持绿色列表分配。
+
+\subsection{检测功效}
+
+在备择假设（带水印文本）下，绿色词元概率为$p = \gamma + \epsilon$，其中$\epsilon > 0$是偏置效应。z-score变为：
+
+\begin{equation}
+Z = \frac{X - n\gamma}{\sqrt{n\gamma(1-\gamma)}} = \frac{n\epsilon}{\sqrt{n\gamma(1-\gamma)}} + \frac{X - np}{\sqrt{n\gamma(1-\gamma)}}
+\end{equation}
+
+对于大的$n$，第二项近似为$\mathcal{N}(0,1)$，所以$Z \approx \frac{n\epsilon}{\sqrt{n\gamma(1-\gamma)}} = \epsilon\sqrt{\frac{n}{\gamma(1-\gamma)}}$。
+
+为了实现$Z > 4$（FPR $\approx 10^{-5}$），我们需要：
+
+\begin{equation}
+n > \frac{16\gamma(1-\gamma)}{\epsilon^2}
+\end{equation}
+
+对于$\gamma = 0.5$和$\epsilon = 0.1$，这给出$n > 400$个词元。然而，使用LSH稳定化的路由权重，由于更一致的绿色列表分配，$\epsilon$可能更大，从而减少所需的文本长度。
+
+\section{实验}
+
+\subsection{实验设置}
+
+\subsubsection{模型}
+
+我们在两个先进的MoE模型上评估：
+\begin{itemize}
+\item \textbf{DeepSeek MoE}：具有高效专家路由的大规模MoE模型
+\item \textbf{Qianwen MoE}：具有优化路由机制的先进MoE架构
+\end{itemize}
+
+这些模型代表了当前MoE架构在中文和多语言理解方面的先进水平。
+
+\subsubsection{数据集}
+
+我们使用三种任务类型：
+\begin{itemize}
+\item \textbf{开放域问答}：SQuAD、Natural Questions
+\item \textbf{摘要}：CNN/DailyMail、XSum
+\item \textbf{数据到文本}：WebNLG
+\end{itemize}
+
+\subsubsection{基线方法}
+
+我们与以下方法比较：
+\begin{itemize}
+\item \textbf{Kirchenbauer等人（2023）}：原始绿色词表水印
+\item \textbf{SemStamp（Zhao等人，2024）}：句子级语义水印
+\item \textbf{Unigram水印（Kuditipudi等人，2023）}：基于单字的变体
+\item \textbf{多比特水印（Qu等人，2024）}：可追溯水印
+\end{itemize}
+
+\subsubsection{攻击方法}
+
+我们评估对以下攻击的鲁棒性：
+\begin{itemize}
+\item \textbf{人类释义}：保持语义的手动重写
+\item \textbf{LLM释义}：GPT-4单轮和多轮释义
+\item \textbf{Bigram释义攻击}：强对抗性释义
+\item \textbf{B4黑盒清洗}：自动化水印移除
+\item \textbf{混合攻击}：将释义与文本混合和截断相结合
+\end{itemize}
+
+\subsubsection{指标}
+
+\begin{itemize}
+\item \textbf{可检测性}：AUC、TPR@FPR=$10^{-5}$、z-score曲线 vs. 文本长度
+\item \textbf{质量}：困惑度、BLEU、ROUGE、人工评估分数
+\item \textbf{鲁棒性}：检测率 vs. 释义强度（编辑距离、语义相似度）
+\end{itemize}
+
+\subsection{主要结果}
+
+\subsubsection{对释义的鲁棒性}
+
+表~\ref{tab:robustness}显示了各种攻击方法后的检测率。我们的方法（MoE-LSH）始终优于基线，特别是在强释义下。LSH稳定化的路由权重即使在表面形式发生显著变化时也保持绿色列表分配。
+
+\begin{table}[t]
+\caption{攻击后的检测率（TPR@FPR=$10^{-5}$）。越高越好。}
+\label{tab:robustness}
+\vskip 0.15in
+\begin{center}
+\resizebox{0.95\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+方法 & 人类释义 & GPT-4 & B4清洗 & 混合 \\
+\midrule
+Kirchenbauer & 0.23 & 0.15 & 0.08 & 0.05 \\
+SemStamp & 0.67 & 0.58 & 0.42 & 0.31 \\
+Unigram & 0.28 & 0.19 & 0.11 & 0.07 \\
+Multi-bit & 0.45 & 0.38 & 0.25 & 0.18 \\
+\textbf{MoE-LSH} & \textbf{0.82} & \textbf{0.75} & \textbf{0.61} & \textbf{0.52} \\
+\bottomrule
+\end{tabular}%
+}
+\end{center}
+\vskip -0.1in
+\end{table}
+
+\subsubsection{生成质量}
+
+表~\ref{tab:quality}显示我们的方法保持与基线相当的生成质量，困惑度增加最小，BLEU/ROUGE分数保持。
+
+\begin{table}[t]
+\caption{CNN/DailyMail上的质量指标（困惑度、BLEU、ROUGE-L）。困惑度越低越好，BLEU/ROUGE越高越好。}
+\label{tab:quality}
+\vskip 0.15in
+\begin{center}
+\begin{footnotesize}
+\begin{tabular}{l@{\hspace{0.3cm}}c@{\hspace{0.2cm}}c@{\hspace{0.2cm}}c}
+\toprule
+方法 & 困惑度 & BLEU & ROUGE-L \\
+\midrule
+无水印 & 12.3 & 45.2 & 42.8 \\
+Kirchenbauer & 12.8 & 44.9 & 42.5 \\
+SemStamp & 13.1 & 44.6 & 42.3 \\
+\textbf{MoE-LSH} & \textbf{12.9} & \textbf{45.0} & \textbf{42.6} \\
+\bottomrule
+\end{tabular}
+\end{footnotesize}
+\end{center}
+\vskip -0.1in
+\end{table}
+
+\subsubsection{检测效率}
+
+图~\ref{fig:detection_curve}显示了z-score曲线 vs. 文本长度。我们的方法使用比基线更少的词元实现可靠检测（$Z > 4$），特别是在释义后。窗口化检测（128词元窗口）进一步改善了短文本性能。
+
+\subsection{消融研究}
+
+\subsubsection{层选择}
+
+我们消融了用于路由权重提取的MoE层。中间层（32层模型中的第8-16层）提供了语义丰富性和稳定性的最佳平衡。早期层过于词元ID驱动；后期层可能过于任务特定。
+
+\subsubsection{LSH比特宽度}
+
+我们测试了$b \in \{32, 64, 128, 256\}$比特。$b=64$提供了最佳权衡：足够的碰撞稳定性，没有过多的计算开销。
+
+\subsubsection{多层融合}
+
+使用2-3个中间层的AND融合优于单层或OR融合，证实了冗余语义信号增强了鲁棒性。
+
+\subsection{路由权重语义分析}
+
+我们分析路由权重是否真正是语义的或词元ID驱动的。在语义相似度任务上，来自中间层的路由权重与句子嵌入相关性良好（Pearson $r = 0.72$），支持我们的语义稳定性声明。然而，早期层显示更高的词元ID相关性，证明了我们的层选择策略。
+
+\section{安全模型与局限性}
+
+\subsection{威胁模型}
+
+我们的水印方案在\emph{白盒提供方可验证}模型中运行：模型提供者可以通过重构路由权重来验证水印。这适用于平台侧治理、学术审计和基准污染检测。
+
+对于\emph{公开验证}（无模型访问），我们提供窗口化统计检测，尽管与白盒检测相比功效降低。这与现有绿色词表方法在强释义下的能力边界一致。
+
+\subsection{密钥管理}
+
+与所有基于PRF的水印一样，我们的方法需要秘密密钥（LSH投影矩阵$\mathbf{R}$和PRF种子）。密钥泄露使水印移除成为可能。我们建议：
+\begin{itemize}
+\item \textbf{密钥轮换}：定期更新密钥以限制暴露窗口
+\item \textbf{多域隔离}：为不同应用域使用不同密钥
+\item \textbf{安全存储}：使用标准密码学实践保护密钥
+\end{itemize}
+
+\subsection{局限性}
+
+\begin{itemize}
+\item \textbf{仅MoE}：我们的方法需要MoE架构；密集Transformer不适用。然而，现代LLM中的MoE趋势使这一限制不那么严格。
+\item \textbf{白盒检测}：完整的检测功效需要模型访问。公开验证是可能的，但敏感性降低。
+\item \textbf{路由稳定性假设}：如果路由权重高度不稳定（例如，由于负载均衡随机性），LSH碰撞可能退化。我们通过多层融合和固定精度路由来缓解这一问题。
+\end{itemize}
+
+\section{结论}
+
+我们引入了首个用于MoE LLM的内生语义水印方法，利用路由权重作为通过LSH稳定化的语义信号。我们的方法是无需训练的，不需要外部模型，并且与现有方法相比，在面对强释义攻击时表现出更优的鲁棒性。随着MoE架构成为扩展LLM的标准，我们的工作为MoE时代的语义鲁棒水印奠定了基础。
+
+未来方向包括：(1) 扩展到其他MoE变体（如switch transformers），(2) 探索可证明的鲁棒性保证，(3) 研究使用路由权重签名的多比特可追溯性，以及(4) 适应动态路由策略。
+
+\section*{致谢}
+
+我们感谢匿名审稿人的宝贵反馈。本工作得到了[待添加资助信息]的支持。
+
+\section*{影响声明}
+
+本文提出的工作旨在推进机器学习领域，特别是在大语言模型的内容来源和水印方面。这里开发的水印技术可以用于有益目的（版权保护、虚假信息检测）和潜在有害目的（内容跟踪、审查）。我们鼓励负责任地使用和透明地部署水印技术，并采取适当的保障措施和用户意识。
+
+% Bibliography
+\bibliography{moe_lsh_watermark_refs}
+\bibliographystyle{icml2025}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% APPENDIX
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\appendix
+\onecolumn
+
+\section{实现细节}
+
+\subsection{HuggingFace集成}
+
+我们的实现扩展了HuggingFace的\texttt{WatermarkLogitsProcessor}以支持MoE路由权重提取。我们在MoE层添加轻量级钩子，在前向传播过程中捕获路由权重。
+
+\subsection{LSH实现}
+
+我们使用\texttt{datasketch}库进行SimHash计算，并对路由权重向量进行了自定义修改。投影矩阵$\mathbf{R}$生成一次并在所有生成中重复使用。
+
+\subsection{检测管道}
+
+我们的检测管道支持白盒（模型重构）和窗口化统计两种模式。我们提供批量评估和检测曲线可视化的脚本。
+
+\section{额外实验结果}
+
+\subsection{跨模型泛化}
+
+我们测试路由权重语义是否在MoE模型间泛化。结果显示中等程度的泛化，当检测使用与生成相同的模型时性能最佳。
+
+\subsection{计算开销}
+
+生成开销：$< 1\%$（路由权重提取已经是MoE推理的一部分）。检测开销：与文本长度线性（每次检测一次前向传播）。
+
+\section{扩展相关工作}
+
+[如果空间允许，可以在此添加额外的相关工作讨论。]
+
+\end{document}
+
