@@ -101,7 +101,18 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple datasets>=2.14.0 rouge-s
 REM 尝试安装 Flash Attention (可选)
 echo.
 echo 尝试安装 Flash Attention (可选)...
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple flash-attn --no-build-isolation || echo ⚠️  Flash Attention 安装失败，将使用标准注意力
+echo 注意: flash-attn 编译可能需要 20-30 分钟，可以按 Ctrl+C 跳过
+echo flash-attn 不是必需的，代码会自动使用标准注意力机制
+echo.
+set /p install_flash="是否安装 flash-attn? (直接回车跳过) [N]: "
+if /i "%install_flash%"=="Y" (
+    echo 开始安装 flash-attn（这可能需要较长时间）...
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple flash-attn --no-build-isolation || (
+        echo ⚠️  Flash Attention 安装失败，将使用标准注意力（不影响主要功能）
+    )
+) else (
+    echo 跳过 flash-attn 安装
+)
 
 REM 配置 HuggingFace 镜像
 echo.

@@ -109,8 +109,17 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple \
 # 尝试安装 Flash Attention (可选，可能失败)
 echo ""
 echo "尝试安装 Flash Attention (可选)..."
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple flash-attn --no-build-isolation || \
-    echo "⚠️  Flash Attention 安装失败，将使用标准注意力（不影响主要功能）"
+echo "注意: flash-attn 编译可能需要 20-30 分钟，可以按 Ctrl+C 跳过"
+echo "flash-attn 不是必需的，代码会自动使用标准注意力机制"
+read -t 5 -p "是否安装 flash-attn? (5秒后自动跳过) [y/N]: " response || response="N"
+if [[ "$response" =~ ^[Yy]$ ]]; then
+    echo "开始安装 flash-attn（这可能需要较长时间）..."
+    timeout 1800 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple flash-attn --no-build-isolation || {
+        echo "⚠️  Flash Attention 安装失败或超时，将使用标准注意力（不影响主要功能）"
+    }
+else
+    echo "跳过 flash-attn 安装"
+fi
 
 # 配置 HuggingFace 镜像（用于下载模型）
 echo ""
