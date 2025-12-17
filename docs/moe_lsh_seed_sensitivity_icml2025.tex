@@ -2,6 +2,10 @@
 
 \documentclass{article}
 
+% Encoding and Chinese support for pdfLaTeX
+\usepackage[utf8]{inputenc}
+\usepackage{CJKutf8}
+
 % Recommended packages for figures and better typesetting:
 \usepackage{microtype}
 \usepackage{graphicx}
@@ -44,10 +48,10 @@
 \icmltitlerunning{Seed Sensitivity in MoE Semantic Watermarking}
 
 \begin{document}
+\begin{CJK}{UTF8}{gbsn}
 
 \twocolumn[
-\icmltitle{混合专家模型与语义哈希水印中的随机种子敏感性 \\
-High-Dimensional Geometric Analysis of Seed Sensitivity in MoE Semantic Watermarking}
+\icmltitle{High-Dimensional Geometric Analysis of Seed Sensitivity in MoE Semantic Watermarking}
 
 % Author information (blind for review)
 \begin{icmlauthorlist}
@@ -62,6 +66,11 @@ High-Dimensional Geometric Analysis of Seed Sensitivity in MoE Semantic Watermar
 ]
 
 \printAffiliationsAndNotice{}
+
+% Chinese display title (kept out of PDF bookmarks for hyperref)
+\begin{center}
+{\LARGE 混合专家模型与语义哈希水印中的随机种子敏感性}\\[0.5em]
+\end{center}
 
 \begin{abstract}
 基于混合专家模型（Mixture-of-Experts, MoE）的 大语言模型（LLM）已在工业界和学术界广泛部署，水印技术被视为区分机器生成文本与人类创作文本的关键工具。
@@ -203,12 +212,12 @@ MoE 场景下实验观察到的“好种子极少、坏种子占绝大多数”�
     \item 整个簇进入绿区，无法注入任何水印信息。
 \end{itemize}
 
-记最优 Token 为 $t^\*$，其 Logit 为 $z_{\max}$，次优同义词为 $t'$，Logit 为 $z_{\text{sub}} \approx z_{\max}$。
+记最优 Token 为 $t^*$，其 Logit 为 $z_{\max}$，次优同义词为 $t'$，Logit 为 $z_{\text{sub}} \approx z_{\max}$。
 对绿区 Token 施加偏置 $\delta>0$ 后，生成概率为
 \begin{equation}
     P(t) \propto \exp\left(z_t + \delta \cdot \mathbb{I}[t\in V_{\text{G}}]\right).
 \end{equation}
-当 $t^\* \in V_{\text{R}}$ 且所有高质量同义词均被切到红区时，模型被迫在 $V_{\text{G}}$ 内选择 Logit 最大的 $t_{\text{noise}}$，其原始 Logit $z_{\text{noise}} \ll z_{\max}$。
+当 $t^* \in V_{\text{R}}$ 且所有高质量同义词均被切到红区时，模型被迫在 $V_{\text{G}}$ 内选择 Logit 最大的 $t_{\text{noise}}$，其原始 Logit $z_{\text{noise}} \ll z_{\max}$。
 若
 \begin{equation}
     z_{\text{noise}} + \delta > z_{\max},
@@ -384,6 +393,7 @@ LSH 的区分能力依赖于投影值
 \bibliography{moe_lsh_watermark_refs}
 \bibliographystyle{icml2025}
 
+\end{CJK}
 \end{document}
 
 
