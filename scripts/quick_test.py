@@ -34,7 +34,7 @@ def test_model_loading(config_path: str):
     with open(config_path, 'r') as f:
         config = json.load(f)
     
-    model_name = config.get("model_name", "Qwen/Qwen2.5-MoE-A14B-Chat")
+    model_name = config.get("model_name", "Qwen/Qwen2.5-MoE-A2.7B-Chat")
     print(f"尝试加载模型: {model_name}")
     
     try:

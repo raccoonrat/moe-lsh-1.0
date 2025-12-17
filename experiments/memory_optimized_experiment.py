@@ -240,7 +240,7 @@ def main():
         "--config",
         type=str,
         default="configs/rtx4050_config.json",
-        help="配置文件路径"
+        help="配置文件路径（默认使用 Qwen2.5-MoE-A2.7B-Chat）"
     )
     parser.add_argument(
         "--num_seeds",

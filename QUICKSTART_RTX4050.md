@@ -38,11 +38,14 @@ python scripts/quick_test.py
 ### 步骤 3: 运行最小实验
 
 ```bash
+# 使用推荐的 Qwen2.5-MoE-A2.7B-Chat 模型
 python experiments/memory_optimized_experiment.py \
     --config configs/rtx4050_config.json \
     --num_seeds 5 \
     --output_dir results/quick_test
 ```
+
+**注意**: 默认配置使用 `Qwen/Qwen2.5-MoE-A2.7B-Chat`（已更新，原 A14B 版本不可用）
 
 **预计时间**: 10-15 分钟  
 **显存使用**: ~5-6GB

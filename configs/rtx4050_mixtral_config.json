@@ -1,5 +1,5 @@
 {
-  "model_name": "Qwen/Qwen2.5-MoE-A2.7B-Chat",
+  "model_name": "mistralai/Mixtral-8x7B-Instruct-v0.1",
   "model_revision": null,
   "device": "cuda",
   "torch_dtype": "float16",
@@ -10,10 +10,10 @@
     "0": "7GiB"
   },
   "extractor_config": {
-    "start_layer_idx": 4,
-    "end_layer_idx": 10,
+    "start_layer_idx": 6,
+    "end_layer_idx": 12,
     "use_top_k": true,
-    "k": 4,
+    "k": 2,
     "token_idx": -1
   },
   "encoder_config": {
@@ -32,3 +32,4 @@
     "pad_token_id": null
   }
 }
+

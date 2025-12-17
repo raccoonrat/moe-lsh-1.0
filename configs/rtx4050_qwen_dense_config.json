@@ -1,19 +1,19 @@
 {
-  "model_name": "Qwen/Qwen2.5-MoE-A2.7B-Chat",
+  "model_name": "Qwen/Qwen2.5-1.5B-Instruct",
   "model_revision": null,
   "device": "cuda",
   "torch_dtype": "float16",
-  "load_in_4bit": true,
+  "load_in_4bit": false,
   "load_in_8bit": false,
   "use_flash_attention": false,
   "max_memory": {
     "0": "7GiB"
   },
   "extractor_config": {
-    "start_layer_idx": 4,
-    "end_layer_idx": 10,
-    "use_top_k": true,
-    "k": 4,
+    "start_layer_idx": 8,
+    "end_layer_idx": 12,
+    "use_top_k": false,
+    "k": 0,
     "token_idx": -1
   },
   "encoder_config": {
@@ -30,5 +30,7 @@
     "temperature": 0.7,
     "top_p": 0.9,
     "pad_token_id": null
-  }
+  },
+  "note": "这是密集模型（非MoE），用于对比实验。注意：MoE水印方法需要MoE架构，此配置仅供参考。"
 }
+
