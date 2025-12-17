@@ -2,20 +2,27 @@
 
 ## 🚀 5 分钟快速验证
 
-### 步骤 1: 环境搭建
+### 步骤 1: 环境搭建（使用 Conda + 国内镜像）
 
 **Windows:**
 ```cmd
 scripts\setup_environment.bat
-venv\Scripts\activate
+conda activate moe-lsh-watermark
+call .env_rtx4050.bat
 ```
 
 **Linux/Mac:**
 ```bash
 chmod +x scripts/setup_environment.sh
 ./scripts/setup_environment.sh
-source venv/bin/activate
+conda activate moe-lsh-watermark
+source .env_rtx4050
 ```
+
+**注意**: 脚本会自动配置：
+- ✅ Conda 镜像（清华）
+- ✅ pip 镜像（清华）
+- ✅ HuggingFace 镜像（hf-mirror.com）
 
 ### 步骤 2: 快速测试
 

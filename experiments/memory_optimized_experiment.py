@@ -6,10 +6,15 @@
 import torch
 import gc
 import argparse
+import os
 from pathlib import Path
 from typing import List, Dict, Optional
 import json
 from tqdm import tqdm
+
+# 配置 HuggingFace 镜像（如果未设置）
+if "HF_ENDPOINT" not in os.environ:
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 from transformers import (
     AutoModelForCausalLM,
