@@ -78,12 +78,6 @@ def test_model_loading(config_path: str):
         )
         print("✅ Tokenizer 加载成功")
         
-        # 准备 offload 文件夹（MoE 模型需要）
-        offload_folder = config.get("offload_folder", "./offload_weights")
-        if cpu_offload:
-            Path(offload_folder).mkdir(parents=True, exist_ok=True)
-            print(f"Offload 文件夹: {offload_folder}")
-        
         # 加载模型
         print("加载模型（这可能需要几分钟）...")
         model = AutoModelForCausalLM.from_pretrained(
@@ -92,9 +86,7 @@ def test_model_loading(config_path: str):
             torch_dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True,
-            max_memory=max_memory if max_memory else None,
-            offload_folder=offload_folder if cpu_offload else None,
-            offload_state_dict=cpu_offload  # 启用状态字典 offload
+            max_memory=max_memory if max_memory else None
         )
         
         print("✅ 模型加载成功")

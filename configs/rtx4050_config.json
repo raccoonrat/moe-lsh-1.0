@@ -6,10 +6,9 @@
   "load_in_4bit": true,
   "load_in_8bit": false,
   "use_flash_attention": false,
-  "cpu_offload": true,
+  "cpu_offload": false,
   "max_memory": {
-    "0": "5GiB",
-    "cpu": "24GiB"
+    "0": "5.5GiB"
   },
   "extractor_config": {
     "start_layer_idx": 4,
