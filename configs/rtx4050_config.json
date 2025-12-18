@@ -1,5 +1,5 @@
 {
-  "model_name": "Qwen/Qwen2.5-MoE-A2.7B-Chat",
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
   "model_revision": null,
   "device": "cuda",
   "torch_dtype": "float16",

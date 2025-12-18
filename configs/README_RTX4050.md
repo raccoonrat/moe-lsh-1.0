@@ -10,12 +10,12 @@ RTX 4050 通常具有：
 
 ### 选项 1: 量化 MoE 模型（推荐）
 
-**Qwen2.5-MoE-A2.7B-Chat (4-bit 量化)**
+**Qwen1.5-MoE-A2.7B-Chat (4-bit 量化)**
 - 原始大小: ~2.7B 参数
 - 量化后显存: ~2-3GB
 - 优点: 保持 MoE 架构，适合 RTX 4050
 - 配置: 使用 `configs/rtx4050_config.json`
-- **注意**: Qwen2.5-MoE-A14B-Chat 已不可用，已更换为 A2.7B 版本
+- **注意**: Qwen1.5-MoE-A14B-Chat 已不可用，已更换为 A2.7B 版本
 
 **Mixtral-8x7B-Instruct (4-bit 量化)**
 - 原始大小: ~47B 参数（但只有部分激活）

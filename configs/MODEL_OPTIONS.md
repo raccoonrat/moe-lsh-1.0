@@ -2,7 +2,7 @@
 
 ## 推荐模型（按优先级）
 
-### 1. Qwen2.5-MoE-A2.7B-Chat（推荐）⭐
+### 1. Qwen1.5-MoE-A2.7B-Chat（推荐）⭐
 
 **配置文件**: `configs/rtx4050_config.json`
 
@@ -13,7 +13,7 @@
 - ✅ 支持中文和多语言
 - ✅ 在 HuggingFace 上可用
 
-**模型路径**: `Qwen/Qwen2.5-MoE-A2.7B-Chat`
+**模型路径**: `Qwen/Qwen1.5-MoE-A2.7B-Chat`
 
 **使用**:
 ```bash
@@ -39,7 +39,7 @@ python experiments/memory_optimized_experiment.py \
     --config configs/rtx4050_mixtral_config.json
 ```
 
-### 3. Qwen2.5-1.5B-Instruct（对比实验）
+### 3. Qwen1.5-1.5B-Instruct（对比实验）
 
 **配置文件**: `configs/rtx4050_qwen_dense_config.json`
 
@@ -49,17 +49,17 @@ python experiments/memory_optimized_experiment.py \
 - ⚠️ 仅用于对比实验，验证 MoE 的必要性
 - ⚠️ MoE 水印方法需要 MoE 架构
 
-**模型路径**: `Qwen/Qwen2.5-1.5B-Instruct`
+**模型路径**: `Qwen/Qwen1.5-1.5B-Instruct`
 
 ## 已废弃的模型
 
-- ❌ `Qwen/Qwen2.5-MoE-A14B-Chat` - 已从 HuggingFace 移除
+- ❌ `Qwen/Qwen1.5-MoE-A14B-Chat` - 已从 HuggingFace 移除
 
 ## 如何选择模型
 
 ### 对于 RTX 4050 (6-8GB 显存)
 
-**首选**: Qwen2.5-MoE-A2.7B-Chat
+**首选**: Qwen1.5-MoE-A2.7B-Chat
 - 显存占用小
 - 性能足够验证论文思路
 - 下载速度快
@@ -107,7 +107,7 @@ python experiments/memory_optimized_experiment.py \
 from transformers import AutoTokenizer
 
 try:
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-MoE-A2.7B-Chat")
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen1.5-MoE-A2.7B-Chat")
     print("✅ 模型可用")
 except Exception as e:
     print(f"❌ 模型不可用: {e}")
@@ -131,13 +131,13 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 | 模型 | 参数量 | 量化后显存 | 推荐度 | 备注 |
 |------|--------|-----------|--------|------|
-| Qwen2.5-MoE-A2.7B-Chat | 2.7B | ~2-3GB | ⭐⭐⭐⭐⭐ | 最适合 RTX 4050 |
+| Qwen1.5-MoE-A2.7B-Chat | 2.7B | ~2-3GB | ⭐⭐⭐⭐⭐ | 最适合 RTX 4050 |
 | Mixtral-8x7B-Instruct | 47B (激活~13B) | ~5-6GB | ⭐⭐⭐⭐ | 性能好，但显存紧张 |
-| Qwen2.5-1.5B-Instruct | 1.5B | ~1GB | ⭐⭐ | 非 MoE，仅对比用 |
+| Qwen1.5-1.5B-Instruct | 1.5B | ~1GB | ⭐⭐ | 非 MoE，仅对比用 |
 
 ## 更新日志
 
-- 2025-01-XX: 移除 Qwen2.5-MoE-A14B-Chat（已不可用）
-- 2025-01-XX: 添加 Qwen2.5-MoE-A2.7B-Chat 作为推荐模型
+- 2025-01-XX: 移除 Qwen1.5-MoE-A14B-Chat（已不可用）
+- 2025-01-XX: 添加 Qwen1.5-MoE-A2.7B-Chat 作为推荐模型
 - 2025-01-XX: 添加 Mixtral-8x7B-Instruct 作为备选
 
