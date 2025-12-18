@@ -53,9 +53,10 @@ def test_model_loading(config_path: str):
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=torch.float16,
                 bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4"
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_quant_storage=torch.uint8  # 使用更紧凑的存储格式
             )
-            print("使用 4-bit 量化" + ("（启用 CPU offload）" if cpu_offload else ""))
+            print("使用 4-bit 量化（优化存储）")
         
         # 处理 max_memory 配置：将字符串键转换为整数键（GPU设备号）
         max_memory = {}
@@ -80,13 +81,24 @@ def test_model_loading(config_path: str):
         
         # 加载模型
         print("加载模型（这可能需要几分钟）...")
+        
+        # 确定 device_map 策略
+        if max_memory:
+            device_map = "auto"
+        else:
+            # 强制使用 GPU，不使用 auto 避免自动 offload
+            device_map = {"": 0}
+        
+        print(f"设备映射策略: {device_map}")
+        
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             quantization_config=quantization_config,
             torch_dtype=torch.float16,
-            device_map="auto",
+            device_map=device_map,
             trust_remote_code=True,
-            max_memory=max_memory if max_memory else None
+            max_memory=max_memory if max_memory else None,
+            low_cpu_mem_usage=True  # 减少加载时的 CPU 内存使用
         )
         
         print("✅ 模型加载成功")
