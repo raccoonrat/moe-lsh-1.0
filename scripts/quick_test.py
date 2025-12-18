@@ -55,7 +55,7 @@ def test_model_loading(config_path: str):
                 bnb_4bit_use_double_quant=True,
                 bnb_4bit_quant_type="nf4"
             )
-            print("使用 4-bit 量化")
+            print("使用 4-bit 量化" + ("（启用 CPU offload）" if cpu_offload else ""))
         
         # 处理 max_memory 配置：将字符串键转换为整数键（GPU设备号）
         max_memory = {}
@@ -93,7 +93,8 @@ def test_model_loading(config_path: str):
             device_map="auto",
             trust_remote_code=True,
             max_memory=max_memory if max_memory else None,
-            offload_folder=offload_folder if cpu_offload else None
+            offload_folder=offload_folder if cpu_offload else None,
+            offload_state_dict=cpu_offload  # 启用状态字典 offload
         )
         
         print("✅ 模型加载成功")
