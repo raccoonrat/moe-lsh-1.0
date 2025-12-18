@@ -49,6 +49,19 @@ def test_model_loading(config_path: str):
             )
             print("使用 4-bit 量化")
         
+        # 处理 max_memory 配置：将字符串键转换为整数键（GPU设备号）
+        max_memory = {}
+        for key, value in config.get("max_memory", {}).items():
+            # 尝试将键转换为整数（用于GPU设备号）
+            try:
+                max_memory[int(key)] = value
+            except ValueError:
+                # 保留非数字键（如 'cpu', 'disk'）
+                max_memory[key] = value
+        
+        if max_memory:
+            print(f"显存限制配置: {max_memory}")
+        
         # 加载 tokenizer
         print("加载 tokenizer...")
         tokenizer = AutoTokenizer.from_pretrained(
@@ -65,7 +78,7 @@ def test_model_loading(config_path: str):
             torch_dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True,
-            max_memory=config.get("max_memory", {})
+            max_memory=max_memory if max_memory else None
         )
         
         print("✅ 模型加载成功")
