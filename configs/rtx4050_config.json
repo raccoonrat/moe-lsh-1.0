@@ -3,11 +3,13 @@
   "model_revision": null,
   "device": "cuda",
   "torch_dtype": "float16",
-  "load_in_4bit": true,
-  "load_in_8bit": false,
+  "load_in_4bit": false,
+  "load_in_8bit": true,
   "use_flash_attention": false,
+  "cpu_offload": true,
   "max_memory": {
-    "0": "7GiB"
+    "0": "5GiB",
+    "cpu": "16GiB"
   },
   "extractor_config": {
     "start_layer_idx": 4,

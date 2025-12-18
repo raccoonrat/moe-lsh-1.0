@@ -40,7 +40,15 @@ def test_model_loading(config_path: str):
     try:
         # 配置量化
         quantization_config = None
-        if config.get("load_in_4bit", False):
+        cpu_offload = config.get("cpu_offload", False)
+        
+        if config.get("load_in_8bit", False):
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                llm_int8_enable_fp32_cpu_offload=cpu_offload
+            )
+            print("使用 8-bit 量化" + ("（启用 CPU offload）" if cpu_offload else ""))
+        elif config.get("load_in_4bit", False):
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=torch.float16,
@@ -87,7 +95,9 @@ def test_model_loading(config_path: str):
         # 测试生成
         print("\n测试生成...")
         test_prompt = "Hello, how are you?"
-        inputs = tokenizer(test_prompt, return_tensors="pt").to("cuda")
+        inputs = tokenizer(test_prompt, return_tensors="pt")
+        # 将输入移动到模型的第一个设备
+        inputs = inputs.to(model.device)
         
         with torch.no_grad():
             outputs = model.generate(
