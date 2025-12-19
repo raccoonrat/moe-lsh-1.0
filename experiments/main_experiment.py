@@ -3,10 +3,17 @@
 运行完整的种子敏感性分析实验
 """
 
+import sys
+from pathlib import Path
+
+# 添加项目根目录到 Python 路径
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import torch
 import argparse
 import json
-from pathlib import Path
 from typing import List, Dict, Optional
 import numpy as np
 from tqdm import tqdm
