@@ -93,27 +93,44 @@ def load_model_with_quantization(
     
     # 处理 max_memory 配置：将字符串键转换为整数键（GPU设备号）
     max_memory = {}
+    use_max_memory = False
     if "max_memory" in config and config["max_memory"]:
         for key, value in config["max_memory"].items():
             # 尝试将键转换为整数（用于GPU设备号）
             try:
                 max_memory[int(key)] = value
+                use_max_memory = True
             except ValueError:
                 # 保留非数字键（如 'cpu', 'disk'）
                 max_memory[key] = value
+                use_max_memory = True
     
     # 加载模型
+    # 对于 4-bit 量化模型，优先使用 GPU，避免自动 offload 到 CPU
+    if quantization_config and config.get("load_in_4bit", False):
+        # 4-bit 量化模型应该能完全放在 GPU 上，使用固定的 device_map
+        device_map = {"": 0}  # 强制所有模块在 GPU 0 上
+        print("使用固定设备映射: GPU 0（4-bit 量化模式）")
+    else:
+        # 非量化模型或使用 max_memory 限制时，使用 auto
+        device_map = "auto"
+        print("使用自动设备映射")
+    
     model_kwargs = {
         "trust_remote_code": True,
         "dtype": torch_dtype,  # 使用 dtype 代替已废弃的 torch_dtype
-        "device_map": "auto",
+        "device_map": device_map,
     }
     
     if quantization_config:
         model_kwargs["quantization_config"] = quantization_config
+        # 4-bit 量化时，如果使用 max_memory，需要设置 enable_fp32_cpu_offload
+        if use_max_memory and config.get("load_in_4bit", False):
+            # 但实际上我们希望避免 CPU offload，所以不设置 max_memory
+            print("⚠️  警告: 4-bit 量化模式忽略 max_memory 配置，强制使用 GPU")
     
-    # 设置最大显存
-    if max_memory:
+    # 只在非量化模式或明确需要时设置 max_memory
+    if use_max_memory and not config.get("load_in_4bit", False):
         model_kwargs["max_memory"] = max_memory
         print(f"显存限制配置: {max_memory}")
     
