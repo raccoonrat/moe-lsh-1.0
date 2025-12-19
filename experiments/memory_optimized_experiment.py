@@ -91,10 +91,21 @@ def load_model_with_quantization(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
+    # 处理 max_memory 配置：将字符串键转换为整数键（GPU设备号）
+    max_memory = {}
+    if "max_memory" in config and config["max_memory"]:
+        for key, value in config["max_memory"].items():
+            # 尝试将键转换为整数（用于GPU设备号）
+            try:
+                max_memory[int(key)] = value
+            except ValueError:
+                # 保留非数字键（如 'cpu', 'disk'）
+                max_memory[key] = value
+    
     # 加载模型
     model_kwargs = {
         "trust_remote_code": True,
-        "torch_dtype": torch_dtype,
+        "dtype": torch_dtype,  # 使用 dtype 代替已废弃的 torch_dtype
         "device_map": "auto",
     }
     
@@ -102,8 +113,9 @@ def load_model_with_quantization(
         model_kwargs["quantization_config"] = quantization_config
     
     # 设置最大显存
-    if "max_memory" in config:
-        model_kwargs["max_memory"] = config["max_memory"]
+    if max_memory:
+        model_kwargs["max_memory"] = max_memory
+        print(f"显存限制配置: {max_memory}")
     
     # 使用 Flash Attention (如果可用)
     if config.get("use_flash_attention", False):
