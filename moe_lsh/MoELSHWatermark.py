@@ -2,12 +2,12 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import scipy.stats
-from typing import List
+from typing import List, Optional, Dict
 import hashlib
 
-# 从您的框架中导入基类
-from ..base import BaseWatermark, BaseConfig
-from utils.transformers_config import TransformersConfig
+# 从基础模块导入基类
+from .base import BaseWatermark, BaseConfig
+from .utils.transformers_config import TransformersConfig
 
 # =============================================================================
 #  辅助类 (我们的核心逻辑)
@@ -157,11 +157,24 @@ class WatermarkGeneratorContext:
 
 class MoELSHWatermarkConfig(BaseConfig):
     """MoE-LSH水印的配置类 (无改动)"""
+    def __init__(self, config_dict: Optional[Dict] = None, transformers_config=None, *args, **kwargs):
+        if config_dict is None:
+            config_dict = {}
+        super().__init__(config_dict, *args, **kwargs)
+        self.transformers_config = transformers_config
+    
     def initialize_parameters(self) -> None:
-        self.extractor_config = self.config_dict['extractor_config']
-        self.encoder_config = self.config_dict['encoder_config']
-        self.delta = self.config_dict['watermark_strength_delta']
-        self.z_threshold = self.config_dict['detection_z_threshold']
+        self.extractor_config = self.config_dict.get('extractor_config', {})
+        self.encoder_config = self.config_dict.get('encoder_config', {})
+        self.delta = self.config_dict.get('watermark_strength_delta', 2.0)
+        self.z_threshold = self.config_dict.get('detection_z_threshold', 4.0)
+        # 模型和tokenizer从config_dict中获取
+        self.generation_model = self.config_dict.get('generation_model')
+        self.generation_tokenizer = self.config_dict.get('generation_tokenizer')
+        self.device = self.config_dict.get('device', 'cuda')
+        self.vocab_size = self.config_dict.get('vocab_size', 0)
+        self.gen_kwargs = self.config_dict.get('gen_kwargs', {})
+    
     @property
     def algorithm_name(self) -> str:
         return 'MoELSHWatermark'
@@ -182,9 +195,20 @@ class MoELSHWatermark(BaseWatermark):
             self.config.device
         )
 
-        num_experts = getattr(self.config.generation_model.config, 'n_routed_experts', None)
+        # 尝试不同的属性名来获取专家数量（不同模型可能使用不同的属性名）
+        model_config = self.config.generation_model.config
+        num_experts = (
+            getattr(model_config, 'n_routed_experts', None) or
+            getattr(model_config, 'num_experts', None) or
+            getattr(model_config, 'num_local_experts', None)
+        )
         if num_experts is None:
-            raise AttributeError("Model config does not have 'n_routed_experts' attribute. Is this an MoE model?")
+            # 如果都找不到，尝试从模型名称或其他方式推断，或使用默认值
+            # 对于 Qwen2MoE，通常是60个专家
+            if 'qwen' in str(type(model_config)).lower() or 'qwen' in str(type(self.config.generation_model)).lower():
+                num_experts = 60  # Qwen2MoE 默认专家数
+            else:
+                raise AttributeError("Model config does not have expert count attribute. Is this an MoE model?")
 
         num_sliced_layers = self.extractor.end_layer - self.extractor.start_layer
         self.config.encoder_config['input_dim'] = num_sliced_layers * num_experts

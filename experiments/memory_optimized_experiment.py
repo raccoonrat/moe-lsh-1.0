@@ -151,11 +151,8 @@ def create_watermark_config(
         "gen_kwargs": base_config.get("generation_config", {})
     }
     
-    # 创建配置对象（需要适配实际的配置类接口）
-    # 这里假设可以直接传递字典
-    config = MoELSHWatermarkConfig.__new__(MoELSHWatermarkConfig)
-    config.config_dict = watermark_config_dict
-    config.initialize_parameters()
+    # 创建配置对象（直接传递字典）
+    config = MoELSHWatermarkConfig(config_dict=watermark_config_dict)
     
     return config
 
