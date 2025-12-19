@@ -63,6 +63,9 @@ def load_model_with_quantization(
     print(f"加载模型: {model_name}")
     print(f"设备: {device}")
     
+    # 清理显存
+    clear_gpu_cache()
+    
     # 配置量化
     quantization_config = None
     if config.get("load_in_4bit", False):
@@ -71,7 +74,8 @@ def load_model_with_quantization(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4"
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_quant_storage=torch.uint8  # 使用更紧凑的存储
         )
     elif config.get("load_in_8bit", False):
         print("使用 8-bit 量化...")
@@ -106,30 +110,27 @@ def load_model_with_quantization(
                 use_max_memory = True
     
     # 加载模型
-    # 对于 4-bit 量化模型，优先使用 GPU，避免自动 offload 到 CPU
-    if quantization_config and config.get("load_in_4bit", False):
-        # 4-bit 量化模型应该能完全放在 GPU 上，使用固定的 device_map
-        device_map = {"": 0}  # 强制所有模块在 GPU 0 上
-        print("使用固定设备映射: GPU 0（4-bit 量化模式）")
-    else:
-        # 非量化模型或使用 max_memory 限制时，使用 auto
-        device_map = "auto"
-        print("使用自动设备映射")
-    
+    # 对于 4-bit 量化模型，不使用 device_map，让 transformers 自动处理
+    # 这样可以避免 accelerate 库的显存管理问题
     model_kwargs = {
         "trust_remote_code": True,
         "dtype": torch_dtype,  # 使用 dtype 代替已废弃的 torch_dtype
-        "device_map": device_map,
+        "low_cpu_mem_usage": True,  # 减少 CPU 内存使用
     }
+    
+    # 对于 4-bit 量化，不设置 device_map，让量化库自动处理设备分配
+    if not quantization_config:
+        model_kwargs["device_map"] = "auto"
+        print("使用自动设备映射")
+    else:
+        print("使用默认设备映射（4-bit 量化模式）")
     
     if quantization_config:
         model_kwargs["quantization_config"] = quantization_config
-        # 4-bit 量化时，如果使用 max_memory，需要设置 enable_fp32_cpu_offload
-        if use_max_memory and config.get("load_in_4bit", False):
-            # 但实际上我们希望避免 CPU offload，所以不设置 max_memory
-            print("⚠️  警告: 4-bit 量化模式忽略 max_memory 配置，强制使用 GPU")
+        # 4-bit 量化时不使用 max_memory，让 accelerate 自动管理
+        print("使用 4-bit 量化，自动管理显存")
     
-    # 只在非量化模式或明确需要时设置 max_memory
+    # 只在非量化模式时设置 max_memory
     if use_max_memory and not config.get("load_in_4bit", False):
         model_kwargs["max_memory"] = max_memory
         print(f"显存限制配置: {max_memory}")
@@ -142,10 +143,27 @@ def load_model_with_quantization(
         except:
             print("Flash Attention 不可用，使用标准注意力")
     
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        **model_kwargs
-    )
+    try:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            **model_kwargs
+        )
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower() or "CUDA out of memory" in str(e):
+            print("❌ 显存不足，清理缓存后重试...")
+            clear_gpu_cache()
+            # 移除 device_map，使用默认方式
+            if "device_map" in model_kwargs:
+                del model_kwargs["device_map"]
+                print("使用默认设备映射重试...")
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    **model_kwargs
+                )
+            else:
+                raise
+        else:
+            raise
     
     # 启用梯度检查点以节省显存
     if hasattr(model, "gradient_checkpointing_enable"):
@@ -154,6 +172,9 @@ def load_model_with_quantization(
     
     # 设置为评估模式
     model.eval()
+    
+    # 清理缓存
+    clear_gpu_cache()
     
     print(f"模型加载完成，显存使用: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
     

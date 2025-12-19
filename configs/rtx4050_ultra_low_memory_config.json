@@ -7,9 +7,7 @@
   "load_in_8bit": false,
   "use_flash_attention": false,
   "cpu_offload": false,
-  "max_memory": {
-    "0": "5GiB"
-  },
+  "max_memory": {},
   "extractor_config": {
     "start_layer_idx": 6,
     "end_layer_idx": 8,
