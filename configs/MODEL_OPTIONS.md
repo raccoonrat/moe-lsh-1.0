@@ -55,6 +55,23 @@ python experiments/memory_optimized_experiment.py \
 
 - ❌ `Qwen/Qwen1.5-MoE-A14B-Chat` - 已从 HuggingFace 移除
 
+## 关于更小的 MoE 模型
+
+**重要说明**: `Qwen1.5-MoE-A2.7B-Chat` 是目前**最小的常用 MoE 模型**。虽然理论上存在一些更小的 MoE 模型（如 MiniMind-MoE-640-120M 149M参数），但它们通常：
+
+1. ❌ 不支持中文或功能受限
+2. ❌ 可能不兼容当前的代码实现
+3. ❌ 在 HuggingFace 上可能不可用或未维护
+
+**建议**: 如果仍然遇到 OOM 问题，请使用 `rtx4050_ultra_low_memory_config.json` 配置，它会通过以下方式进一步降低显存占用：
+- 限制 GPU 显存使用上限
+- 减少使用的 MoE 层数
+- 减少专家激活数量
+- 减少 LSH 位数和池大小
+- 减少生成长度
+
+这些优化可以显著降低显存占用，同时保持模型的 MoE 架构特性。
+
 ## 如何选择模型
 
 ### 对于 RTX 4050 (6-8GB 显存)
@@ -72,17 +89,47 @@ python experiments/memory_optimized_experiment.py \
 
 如果遇到 OOM（显存不足）：
 
+### 方案 1: 使用超低显存配置（推荐）⭐
+
+**配置文件**: `configs/rtx4050_ultra_low_memory_config.json`
+
+这个配置已经做了最激进的优化：
+- ✅ 限制 GPU 显存为 5GB（通过 `max_memory`）
+- ✅ 只使用 2 层 MoE（layer 6-8）
+- ✅ 减少 top-k 专家数为 2
+- ✅ 减少 LSH 位数为 64
+- ✅ 减少生成长度为 64 tokens
+- ✅ 减少 pool_size 为 4
+
+**使用**:
+```bash
+python experiments/memory_optimized_experiment.py \
+    --config configs/rtx4050_ultra_low_memory_config.json \
+    --num_seeds 10
+```
+
+### 方案 2: 手动优化配置
+
 1. **使用 4-bit 量化**（已在配置中）
-2. **减少 MoE 层数**:
+2. **限制最大显存**:
+   ```json
+   {
+     "max_memory": {
+       "0": "5GiB"
+     }
+   }
+   ```
+3. **减少 MoE 层数**:
    ```json
    {
      "extractor_config": {
        "start_layer_idx": 6,
-       "end_layer_idx": 8  // 只使用 2 层
+       "end_layer_idx": 8,  // 只使用 2 层
+       "k": 2  // 减少 top-k 专家数
      }
    }
    ```
-3. **减少生成长度**:
+4. **减少生成长度**:
    ```json
    {
      "generation_config": {
@@ -90,11 +137,12 @@ python experiments/memory_optimized_experiment.py \
      }
    }
    ```
-4. **减少 LSH 位数**:
+5. **减少 LSH 位数**:
    ```json
    {
      "encoder_config": {
-       "num_bits": 64  // 从 128 减少到 64
+       "num_bits": 64,  // 从 128 减少到 64
+       "pool_size": 4  // 从 8 减少到 4
      }
    }
    ```
@@ -132,12 +180,16 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 | 模型 | 参数量 | 量化后显存 | 推荐度 | 备注 |
 |------|--------|-----------|--------|------|
 | Qwen1.5-MoE-A2.7B-Chat | 2.7B | ~2-3GB | ⭐⭐⭐⭐⭐ | 最适合 RTX 4050 |
+| Qwen1.5-MoE-A2.7B-Chat (超低显存) | 2.7B | ~1.5-2GB | ⭐⭐⭐⭐⭐ | 使用超低显存配置，适合 4-6GB 显存 |
 | Mixtral-8x7B-Instruct | 47B (激活~13B) | ~5-6GB | ⭐⭐⭐⭐ | 性能好，但显存紧张 |
 | Qwen1.5-1.5B-Instruct | 1.5B | ~1GB | ⭐⭐ | 非 MoE，仅对比用 |
+
+**注意**: `Qwen1.5-MoE-A2.7B-Chat` 是当前最小的常用 MoE 模型。如果仍然 OOM，请使用 `rtx4050_ultra_low_memory_config.json` 配置。
 
 ## 更新日志
 
 - 2025-01-XX: 移除 Qwen1.5-MoE-A14B-Chat（已不可用）
 - 2025-01-XX: 添加 Qwen1.5-MoE-A2.7B-Chat 作为推荐模型
 - 2025-01-XX: 添加 Mixtral-8x7B-Instruct 作为备选
+- 2025-01-XX: 添加 `rtx4050_ultra_low_memory_config.json` 超低显存配置，适合 4-6GB 显存
 

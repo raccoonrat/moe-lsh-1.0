@@ -1,0 +1,36 @@
+{
+  "model_name": "Qwen/Qwen1.5-MoE-A2.7B-Chat",
+  "model_revision": null,
+  "device": "cuda",
+  "torch_dtype": "float16",
+  "load_in_4bit": true,
+  "load_in_8bit": false,
+  "use_flash_attention": false,
+  "cpu_offload": false,
+  "max_memory": {
+    "0": "5GiB"
+  },
+  "extractor_config": {
+    "start_layer_idx": 6,
+    "end_layer_idx": 8,
+    "use_top_k": true,
+    "k": 2,
+    "token_idx": -1
+  },
+  "encoder_config": {
+    "num_bits": 64,
+    "pool_size": 4,
+    "secret_key": "default_key",
+    "semantic_pools": true
+  },
+  "watermark_strength_delta": 2.0,
+  "detection_z_threshold": 4.0,
+  "generation_config": {
+    "max_new_tokens": 64,
+    "do_sample": true,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "pad_token_id": null
+  }
+}
+
